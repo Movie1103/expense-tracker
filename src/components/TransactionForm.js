@@ -1,31 +1,21 @@
-import React from 'react'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function TransactionForm() {
+  const navigate = useNavigate();
+
   return (
     <div className="border bg-white rounded-2 p-3">
       <form className="row g-3">
         <div className="col-6">
-          <input 
-            type="radio" 
-            className="btn-check"
-            id="cbx-expense"
-            name="type"
-            defaultChecked
-          />
-          <label 
-            className="btn btn-outline-danger rounded-0 rounded-start"
-            htmlFor="cbx-expense" 
-          >Expense</label>
-          <input 
-            type="radio" 
-            className="btn-check"
-            id="cbx-income"
-            name="type"
-          />
-          <label 
-            className="btn btn-outline-success rounded-0 rounded-end"
-            htmlFor="cbx-income" 
-          >Income</label>
+          <input type="radio" className="btn-check" id="cbx-expense" name="type" defaultChecked />
+          <label className="btn btn-outline-danger rounded-0 rounded-start" htmlFor="cbx-expense">
+            Expense
+          </label>
+          <input type="radio" className="btn-check" id="cbx-income" name="type" />
+          <label className="btn btn-outline-success rounded-0 rounded-end" htmlFor="cbx-income">
+            Income
+          </label>
         </div>
 
         <div className="col-6 d-flex justify-content-end">
@@ -60,10 +50,9 @@ function TransactionForm() {
             <button className="btn btn-primary">Save</button>
           </div>
         </div>
-
       </form>
     </div>
-  )
+  );
 }
 
 export default TransactionForm;
