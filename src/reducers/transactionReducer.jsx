@@ -1,12 +1,16 @@
-const FETCH_TRANSACTION = 'FETCH_TRANSACTION';
-const DELETE_TRANSACTION = 'DELETE_TRANSACTION';
+export const FETCH_TRANSACTION = 'FETCH_TRANSACTION';
+export const DELETE_TRANSACTION = 'DELETE_TRANSACTION';
+export const CREATE_TRANSACTION = 'CREATE_TRANSACTION';
 
-function transactionReducer(state, action) {
+export function transactionReducer(state, action) {
   switch (action.type) {
     case FETCH_TRANSACTION: {
       // dispatch({ type: FETCH_TRANSACTION, value: {trasactions: [] }})
       return action.value.transactions;
     }
+    // case CREATE_TRANSACTION: {
+    //   // dispatch({ type: CREATE_TRANSACTION, value: { transaction: newTransaction }})
+    // }
     case DELETE_TRANSACTION: {
       // dispatch({ type: DELETE_TRANSACTION, value: { id: 'f912b5ca-4a36-42be-983e-c06df51b5792' } })
       const idx = state.findIndex((el) => el.id === action.value.id);
@@ -21,5 +25,3 @@ function transactionReducer(state, action) {
       return state;
   }
 }
-
-export { transactionReducer, FETCH_TRANSACTION, DELETE_TRANSACTION };

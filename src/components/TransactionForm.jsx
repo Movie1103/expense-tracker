@@ -1,24 +1,33 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useContext, useEffect, useState } from 'react';
 import axios from 'axios';
+import validator from 'validator';
 import { TransactionContext } from '../contexts/TransactionContext';
-import { DELETE_TRANSACTION } from '../reducers/transactionReducer';
+import { DELETE_TRANSACTION, FETCH_TRANSACTION } from '../reducers/transactionReducer';
 
 const INCOME = 'INCOME';
 const EXPENSE = 'EXPENSE';
 
 function TransactionForm() {
-  const [transaction, setTransaction] = useState({});
   const [notFoundError, setNotFoundError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState([]);
   const [categoryType, setCategoryType] = useState(EXPENSE);
-  const [payeeInput, setPayeeInput] = useState('');
-  const [amountInput, setAmountInput] = useState('');
-  const [dateInput, setDateInput] = useState('');
-  // console.log(dateInput);
 
+  const [payee, setPayee] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [error, setError] = useState({});
+
+  const [expenses, setExpenses] = useState([]);
+  const [incomes, setIncomes] = useState([]);
+
+  // console.log(categories);
   // console.log(transaction);
+  // console.log(payee);
+  // console.log(amount);
+  // console.log(date);
+  // console.log(categoryId);
 
   const { dispatch } = useContext(TransactionContext);
 
@@ -35,10 +44,17 @@ function TransactionForm() {
           if (res.data.transaction === null) {
             setNotFoundError(true);
           } else {
-            setTransaction(res.data.transaction);
-            setPayeeInput(res.data.transaction.payee);
-            setAmountInput(res.data.transaction.amount);
-            setDateInput(res.data.transaction.date);
+            // const {
+            //    payee,
+            //    amount,
+            //    date,
+            //    category: { id, type }
+            //   } = res.data.transaction
+            setCategoryType(res.data.transaction.category.type);
+            setCategoryId(res.data.transaction.category.id);
+            setPayee(res.data.transaction.payee);
+            setAmount('' + res.data.transaction.amount);
+            setDate(res.data.transaction.date.slice(0, 10));
           }
         })
         .catch((err) => {
@@ -50,20 +66,68 @@ function TransactionForm() {
   useEffect(() => {
     const fetchCategory = async () => {
       const res = await axios.get('http://localhost:8080/categories');
-      setCategories(res.data.categories);
+      const resultExpenses = res.data.categories.filter((el) => el.type === EXPENSE);
+      const resultIncomes = res.data.categories.filter((el) => el.type === INCOME);
+      setExpenses(resultExpenses);
+      setIncomes(resultIncomes);
+      if (categoryType === EXPENSE) {
+        setCategoryId(resultExpenses.id);
+      } else {
+        setCategoryId(resultIncomes.id);
+      }
     };
     fetchCategory();
   }, []);
 
-  const handleSubmitForm = (event) => {
-    event.preventDefault();
-    navigate('/home');
+  const handleSubmitForm = async (e) => {
+    e.preventDefault();
+    // validate input before request to server
+    const inputError = {};
+    if (validator.isEmpty(payee)) {
+      inputError.payee = 'Payee is required';
+    }
+    if (validator.isEmpty(amount)) {
+      inputError.amount = 'Amount is required';
+    } else if (!validator.isNumeric(amount)) {
+      inputError.amount = 'Amount must be numeric';
+    } else if (amount <= 0) {
+      inputError.amount = 'Amount must be greater than zero';
+    }
+    if (validator.isEmpty(date)) {
+      inputError.date = 'Date is required';
+    }
+    if (Object.keys(inputError).length > 0) {
+      setError(inputError);
+    } else {
+      setError({});
+    }
+    try {
+      const body = {
+        payee: payee,
+        categoryId: categoryId,
+        amount: +amount,
+        date: date,
+      };
+      if (params.transactionId) {
+        await axios.put('http://localhost:8080/transactions/' + params.transactionId, body);
+      } else {
+        await axios.post('http://localhost:8080/transactions', body);
+      }
+      const res = await axios.get('http://localhost:8080/transactions');
+      dispatch({
+        type: FETCH_TRANSACTION,
+        value: { transactions: res.data.transactions },
+      });
+      navigate('/home');
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const handleClickDelete = async () => {
     try {
       setLoading(true);
-      await axios.get('http://localhost:8080/transactions/' + params.transactionId);
+      await axios.delete('http://localhost:8080/transactions/' + params.transactionId);
       dispatch({
         type: DELETE_TRANSACTION,
         value: { id: params.transactionId },
@@ -74,8 +138,6 @@ function TransactionForm() {
       console.log(err);
     }
   };
-
-  const filterCategories = categories.filter((el) => el.type === categoryType);
 
   if (notFoundError === true) return <h1 className="text-white">404 !!! Transaction not found!</h1>;
 
@@ -89,8 +151,11 @@ function TransactionForm() {
               className="btn-check"
               id="cbx-expense"
               name="type"
-              defaultChecked
-              onChange={() => setCategoryType(EXPENSE)}
+              checked={categoryType === EXPENSE}
+              onChange={() => {
+                setCategoryType(EXPENSE);
+                setCategoryId(expenses[0].id);
+              }}
             />
             <label className="btn btn-outline-danger rounded-0 rounded-start" htmlFor="cbx-expense">
               Expense
@@ -100,7 +165,11 @@ function TransactionForm() {
               className="btn-check"
               id="cbx-income"
               name="type"
-              onChange={() => setCategoryType(INCOME)}
+              onChange={() => {
+                setCategoryType(INCOME);
+                setCategoryId(incomes[0].id);
+              }}
+              checked={categoryType === INCOME}
             />
             <label className="btn btn-outline-success rounded-0 rounded-end" htmlFor="cbx-income">
               Income
@@ -115,16 +184,17 @@ function TransactionForm() {
             <label className="form-label">Payee</label>
             <input
               type="text"
-              className="form-control"
-              value={payeeInput}
-              onChange={(event) => setPayeeInput(event.target.value)}
+              className={`form-control ${error.payee ? 'is-invalid' : ''}`}
+              value={payee}
+              onChange={(e) => setPayee(e.target.value)}
             />
+            {error.payee && <div className="invalid-feedback">{error.payee}</div>}
           </div>
 
           <div className="col-sm-6">
             <label className="form-label">Category</label>
-            <select className="form-select">
-              {filterCategories.map((el) => (
+            <select className="form-select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              {(categoryType === EXPENSE ? expenses : incomes).map((el) => (
                 <option key={el.id} value={el.id}>
                   {el.name}
                 </option>
@@ -136,20 +206,22 @@ function TransactionForm() {
             <label className="form-label">Amount</label>
             <input
               type="text"
-              className="form-control"
-              value={amountInput}
-              onChange={(event) => setAmountInput(event.target.value)}
+              className={`form-control ${error.amount ? 'is-invalid' : ''}`}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
             />
+            {error.amount && <div className="invalid-feedback">{error.amount}</div>}
           </div>
 
           <div className="col-sm-6">
             <label className="form-label">Date</label>
             <input
               type="date"
-              className="form-control"
-              value={dateInput.slice(0, 10)}
-              onChange={(event) => setDateInput(event.target.value)}
+              className={`form-control ${error.date ? 'is-invalid' : ''}`}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
+            {error.date && <div className="invalid-feedback">{error.date}</div>}
           </div>
 
           <div className="col-12">
@@ -161,7 +233,7 @@ function TransactionForm() {
       </div>
       {params.transactionId && (
         <div className="d-grid mt-5">
-          <button className="btn btn-danger" onClick={handleClickDelete}>
+          <button className="btn btn-danger" onClick={handleClickDelete} disabled={loading}>
             Delete Transaction
           </button>
         </div>
